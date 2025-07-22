@@ -1,61 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Poker Multiplayer</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; background: #222; color: white; padding: 20px; }
-    .card { display: inline-block; width: 60px; height: 90px; background: white; color: black; margin: 5px; font-size: 24px; line-height: 90px; border-radius: 6px; }
-  </style>
+  <meta charset="UTF-8" />
+  <title>Multiplayer Poker Game</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
 </head>
-<body>
-  <h1>Multiplayer Poker</h1>
-  <div id="game">
-    <p id="status">Connecting...</p>
-    <div id="your-hand"></div>
-    <div id="controls" style="display: none;">
-      <button onclick="sendAction('check')">Check</button>
-      <button onclick="sendAction('bet')">Bet</button>
-      <button onclick="sendAction('fold')">Fold</button>
-    </div>
-    <p><strong>Opponent:</strong> <span id="opponent-status">Waiting...</span></p>
+<body class="bg-green-800 text-white flex flex-col items-center min-h-screen p-6">
+  <h1 class="text-3xl font-bold mb-4">♠ Poker Multiplayer ♣</h1>
+
+  <div id="status" class="text-xl mb-4">Connecting...</div>
+
+  <!-- Your Hand -->
+  <div class="mb-6">
+    <h2 class="text-lg font-semibold">Your Hand</h2>
+    <div id="your-hand" class="flex gap-4 mt-2"></div>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
+  <!-- Community Cards -->
+  <div class="mb-6">
+    <h2 class="text-lg font-semibold">Community Cards</h2>
+    <div id="community-cards" class="flex gap-4 mt-2"></div>
+  </div>
+
+  <!-- Opponent Info -->
+  <div class="mb-4">
+    <h2 class="text-lg font-semibold">Opponent</h2>
+    <div id="opponent-status" class="text-yellow-300">Waiting for opponent...</div>
+  </div>
+
+  <!-- Controls -->
+  <div id="controls" class="flex gap-4 mt-4 hidden">
+    <button onclick="sendAction('check')" class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">Check</button>
+    <button onclick="sendAction('bet')" class="bg-yellow-500 px-4 py-2 rounded hover:bg-yellow-600">Bet</button>
+    <button onclick="sendAction('fold')" class="bg-red-600 px-4 py-2 rounded hover:bg-red-700">Fold</button>
+  </div>
+
   <script>
     const socket = io();
     const roomId = 'room1';
+    const statusEl = document.getElementById('status');
+    const yourHandEl = document.getElementById('your-hand');
+    const communityEl = document.getElementById('community-cards');
+    const opponentStatus = document.getElementById('opponent-status');
+    const controls = document.getElementById('controls');
+
+    // Simulasi kartu (nanti bisa sinkron dari server)
+    function displayCard(container, cardText) {
+      const card = document.createElement('div');
+      card.className = "w-16 h-24 bg-white text-black rounded-lg flex items-center justify-center text-xl shadow-lg transform transition-transform hover:scale-110";
+      card.innerText = cardText;
+      container.appendChild(card);
+    }
+
+    function renderFakeCards() {
+      yourHandEl.innerHTML = '';
+      communityEl.innerHTML = '';
+      ['A♠', 'K♦'].forEach(c => displayCard(yourHandEl, c));
+      ['10♣', 'J♥', 'Q♠'].forEach(c => displayCard(communityEl, c));
+    }
 
     socket.emit('joinRoom', roomId);
 
     socket.on('joinedRoom', ({ playerNumber }) => {
-      document.getElementById('status').innerText = `Joined as Player ${playerNumber}`;
+      statusEl.innerText = `Joined as Player ${playerNumber}`;
     });
 
-    socket.on('updatePlayers', players => {
-      console.log('Players in room:', players);
+    socket.on('updatePlayers', (players) => {
+      opponentStatus.innerText = players.length === 2 ? 'Connected' : 'Waiting...';
     });
 
     socket.on('startGame', () => {
-      document.getElementById('status').innerText = 'Game started!';
-      document.getElementById('controls').style.display = 'block';
+      statusEl.innerText = "Game started!";
+      controls.classList.remove('hidden');
+      renderFakeCards(); // nanti diganti distribusi nyata
     });
 
-    socket.on('opponentAction', action => {
-      document.getElementById('opponent-status').innerText = `Opponent chose: ${action}`;
+    socket.on('opponentAction', (action) => {
+      opponentStatus.innerText = `Opponent chose: ${action}`;
     });
 
     socket.on('opponentLeft', () => {
-      document.getElementById('status').innerText = 'Opponent disconnected.';
-      document.getElementById('controls').style.display = 'none';
+      opponentStatus.innerText = 'Opponent disconnected.';
+      controls.classList.add('hidden');
     });
 
     socket.on('roomFull', () => {
-      document.getElementById('status').innerText = 'Room is full. Try again later.';
+      statusEl.innerText = 'Room is full. Try again later.';
     });
 
     function sendAction(action) {
-      document.getElementById('status').innerText = `You chose: ${action}`;
+      statusEl.innerText = `You chose: ${action}`;
       socket.emit('playerAction', { roomId, action });
     }
   </script>
