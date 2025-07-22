@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Poker Multiplayer</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; background: #222; color: white; padding: 20px; }
+    .card { display: inline-block; width: 60px; height: 90px; background: white; color: black; margin: 5px; font-size: 24px; line-height: 90px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Multiplayer Poker</h1>
+  <div id="game">
+    <p id="status">Connecting...</p>
+    <div id="your-hand"></div>
+    <div id="controls" style="display: none;">
+      <button onclick="sendAction('check')">Check</button>
+      <button onclick="sendAction('bet')">Bet</button>
+      <button onclick="sendAction('fold')">Fold</button>
+    </div>
+    <p><strong>Opponent:</strong> <span id="opponent-status">Waiting...</span></p>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const roomId = 'room1';
+
+    socket.emit('joinRoom', roomId);
+
+    socket.on('joinedRoom', ({ playerNumber }) => {
+      document.getElementById('status').innerText = `Joined as Player ${playerNumber}`;
+    });
+
+    socket.on('updatePlayers', players => {
+      console.log('Players in room:', players);
+    });
+
+    socket.on('startGame', () => {
+      document.getElementById('status').innerText = 'Game started!';
+      document.getElementById('controls').style.display = 'block';
+    });
+
+    socket.on('opponentAction', action => {
+      document.getElementById('opponent-status').innerText = `Opponent chose: ${action}`;
+    });
+
+    socket.on('opponentLeft', () => {
+      document.getElementById('status').innerText = 'Opponent disconnected.';
+      document.getElementById('controls').style.display = 'none';
+    });
+
+    socket.on('roomFull', () => {
+      document.getElementById('status').innerText = 'Room is full. Try again later.';
+    });
+
+    function sendAction(action) {
+      document.getElementById('status').innerText = `You chose: ${action}`;
+      socket.emit('playerAction', { roomId, action });
+    }
+  </script>
+</body>
+</html>
